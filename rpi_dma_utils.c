@@ -27,7 +27,7 @@
 #include "rpi_dma_utils.h"
 
 // If non-zero, print debug information
-#define DEBUG           0
+#define DEBUG           1
 // If non-zero, enable PWM hardware output
 #define PWM_OUT         0
 
@@ -36,7 +36,8 @@ char *dma_regstrs[] = {"DMA CS", "CB_AD", "TI", "SRCE_AD", "DEST_AD",
 char *gpio_mode_strs[] = {GPIO_MODE_STRS};
 
 // Virtual memory pointers to acceess GPIO, DMA and PWM from user space
-MEM_MAP pwm_regs, gpio_regs, dma_regs, clk_regs;
+MEM_MAP pwm_regs, gpio_regs, dma_regs;
+extern MEM_MAP clk_regs;
 
 // Use mmap to obtain virtual address, given physical
 void *map_periph(MEM_MAP *mp, void *phys, int size)
