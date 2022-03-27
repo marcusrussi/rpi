@@ -32,8 +32,8 @@
 #define USE_TEST_PIN    0
 
 // SMI cycle timings
-#define SMI_NUM_BITS    SMI_16_BITS
-#define SMI_TIMING      SMI_TIMING_20M
+#define SMI_NUM_BITS    SMI_9_BITS
+#define SMI_TIMING      SMI_TIMING_10M
 
 #if PHYS_REG_BASE==PI_4_REG_BASE        // Timings for RPi v4 (1.5 GHz)
 #define SMI_TIMING_1M   10, 38, 74, 38  // 1 MS/s
@@ -52,7 +52,7 @@
 #endif
 
 // Number of raw bytes per ADC sample
-#define SAMPLE_SIZE     2
+#define SAMPLE_SIZE     4
 
 // Number of samples to be captured, and number to be discarded
 #define NSAMPLES        500
@@ -63,8 +63,8 @@
 #define ADC_SCALE       410.0
 
 // GPIO pin numbers
-#define ADC_D0_PIN      12
-#define ADC_NPINS       12
+#define ADC_D0_PIN      16
+#define ADC_NPINS       9
 #define SMI_SOE_PIN     6
 #define SMI_SWE_PIN     7
 #define SMI_DREQ_PIN    24
@@ -86,7 +86,7 @@ char *smi_cs_regstrs = STRS(SMI_CS_FIELDS);
 
 // Structures for mapped I/O devices, and non-volatile memory
 extern MEM_MAP gpio_regs, dma_regs;
-MEM_MAP vc_mem, clk_regs, smi_regs;
+MEM_MAP vc_mem, smi_regs, clk_regs;
 
 // Pointers to SMI registers
 volatile SMI_CS_REG  *smi_cs;

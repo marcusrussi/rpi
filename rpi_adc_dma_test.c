@@ -37,7 +37,7 @@
 #if defined(MCP3008)
 #define RX_SAMPLE_SIZE  4       // Number of raw Rx bytes per sample
 #define ADC_CHAN        0       // ADC channel number
-#define ADC_9_BITS      0       // Set non-zero for 9-bit data
+#define ADC_9_BITS      1       // Set non-zero for 9-bit data
 #define SPI_CSVAL       0       // Additional CS register settings
 #define MIN_SPI_FREQ    10000   // Minimum SPI frequency
 #define MAX_SPI_FREQ    2600000 // Maximum SPI frequency
