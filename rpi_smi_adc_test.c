@@ -52,7 +52,7 @@
 #endif
 
 // Number of raw bytes per ADC sample
-#define SAMPLE_SIZE     4
+#define SAMPLE_SIZE     2
 
 // Number of samples to be captured, and number to be discarded
 #define NSAMPLES        500
@@ -63,7 +63,7 @@
 #define ADC_SCALE       410.0
 
 // GPIO pin numbers
-#define ADC_D0_PIN      16
+#define ADC_D0_PIN      15
 #define ADC_NPINS       9
 #define SMI_SOE_PIN     6
 #define SMI_SWE_PIN     7
@@ -86,7 +86,7 @@ char *smi_cs_regstrs = STRS(SMI_CS_FIELDS);
 
 // Structures for mapped I/O devices, and non-volatile memory
 extern MEM_MAP gpio_regs, dma_regs;
-MEM_MAP vc_mem, smi_regs, clk_regs;
+MEM_MAP vc_mem, clk_regs, smi_regs;
 
 // Pointers to SMI registers
 volatile SMI_CS_REG  *smi_cs;
@@ -126,9 +126,15 @@ int main(int argc, char *argv[])
     int i;
 
     signal(SIGINT, terminate);
+
+    printf("\n--- Mapping devices ---\n");
     map_devices();
+
     for (i=0; i<ADC_NPINS; i++)
         gpio_mode(ADC_D0_PIN+i, GPIO_IN);
+
+    printf("\n--- Set `gpio_mode` for DIN pins --- \n"); 
+
     gpio_mode(SMI_SOE_PIN, GPIO_ALT1);
 #if !USE_DMA
     init_smi(SMI_NUM_BITS, SMI_TIMING_1M);
@@ -141,19 +147,51 @@ int main(int argc, char *argv[])
         sleep(1);
     }
 #else
+    printf("`disp_smi()`:\n");
+    disp_smi();
+    printf("\n--- Calling `init_smi`");
     init_smi(SMI_NUM_BITS, SMI_TIMING);
+    printf("...done ---\n");
+    disp_smi();
+    disp_reg_fields(smi_cs_regstrs, "CS", *REG32(smi_regs, SMI_CS));
 #if USE_TEST_PIN
     gpio_mode(TEST_PIN, GPIO_OUT);
     gpio_out(TEST_PIN, 0);
 #endif
+    printf("\n--- Calling `map_uncached_mem` ---\n");
     map_uncached_mem(&vc_mem, VC_MEM_SIZE(NSAMPLES+PRE_SAMP));
+
     smi_dmc->dmaen = 1;
     smi_cs->enable = 1;
     smi_cs->clear = 1;
+
+    disp_smi();
+    disp_reg_fields(smi_cs_regstrs, "CS", *REG32(smi_regs, SMI_CS));
+    printf("\n--- Calling `adc_dma_start`");
     rxbuff = adc_dma_start(&vc_mem, NSAMPLES);
+    printf("...done ---\n");
+    disp_smi();
+    disp_reg_fields(smi_cs_regstrs, "CS", *REG32(smi_regs, SMI_CS));
+
+    printf("\n--- Calling `smi_start`");
     smi_start(NSAMPLES, 1);
+    printf("...done ---\n");
+    disp_smi();
+    disp_reg_fields(smi_cs_regstrs, "CS", *REG32(smi_regs, SMI_CS));
+
+    printf("DMA registers:\n");
+    disp_dma(DMA_CHAN_A);
+    
     while (dma_active(DMA_CHAN_A)) ;
+    printf("\n--- DMA no longer active ---\n");
+
+    printf("DMA registers:\n");
+    disp_dma(DMA_CHAN_A);
+
+    printf("\n--- Calling `adc_dma_end`");
     adc_dma_end(rxbuff, sample_data, NSAMPLES);
+    printf("...done ---\n");
+
     disp_reg_fields(smi_cs_regstrs, "CS", *REG32(smi_regs, SMI_CS));
     smi_cs->enable = smi_dcs->enable = 0;
     for (i=0; i<NSAMPLES; i++)
@@ -258,10 +296,12 @@ uint32_t *adc_dma_start(MEM_MAP *mp, int nsamp)
     cbs[3].tfr_len = 4;
     cbs[3].srce_ad = MEM_BUS_ADDR(mp, pindata);
     cbs[3].dest_ad = REG_BUS_ADDR(gpio_regs, GPIO_CLR0);
+    cbs[0].next_cb = 0; // No next CB, this causes the DMA to complete
 #else
     cbs[3].tfr_len = 3 * 4;
     cbs[3].srce_ad = MEM_BUS_ADDR(mp, &modes[3]);
     cbs[3].dest_ad = REG_BUS_ADDR(gpio_regs, GPIO_MODE0);
+    cbs[0].next_cb = 0;
 #endif
     start_dma(mp, DMA_CHAN_A, &cbs[0], 0);
     return(rxdata);
