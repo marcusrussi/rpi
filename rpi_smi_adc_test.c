@@ -32,7 +32,7 @@
 #define USE_TEST_PIN    0
 
 // SMI cycle timings
-#define SMI_NUM_BITS    SMI_9_BITS
+#define SMI_NUM_BITS    SMI_16_BITS
 #define SMI_TIMING      SMI_TIMING_10M
 
 #if PHYS_REG_BASE==PI_4_REG_BASE        // Timings for RPi v4 (1.5 GHz)
@@ -52,7 +52,7 @@
 #endif
 
 // Number of raw bytes per ADC sample
-#define SAMPLE_SIZE     4
+#define SAMPLE_SIZE     2
 
 // Number of samples to be captured, and number to be discarded
 #define NSAMPLES        500
@@ -71,7 +71,7 @@
 #define TEST_PIN        25
 
 // DMA request threshold
-#define REQUEST_THRESH  4
+#define REQUEST_THRESH  1
 
 // SMI register names for diagnostic print
 char *smi_regstrs[] = {
@@ -182,6 +182,14 @@ int main(int argc, char *argv[])
     printf("DMA registers:\n");
     disp_dma(DMA_CHAN_A);
     
+    usleep(1000);
+    printf("\n--- 1000us later ---\n");
+    printf("DMA registers:\n");
+    disp_dma(DMA_CHAN_A);
+    printf("SMI registers:\n");
+    disp_smi();
+    disp_reg_fields(smi_cs_regstrs, "CS", *REG32(smi_regs, SMI_CS));
+
     while (dma_active(DMA_CHAN_A)) ;
     printf("\n--- DMA no longer active ---\n");
 
@@ -194,8 +202,10 @@ int main(int argc, char *argv[])
 
     disp_reg_fields(smi_cs_regstrs, "CS", *REG32(smi_regs, SMI_CS));
     smi_cs->enable = smi_dcs->enable = 0;
-    for (i=0; i<NSAMPLES; i++)
-        printf("%1.3f\n", val_volts(sample_data[i]));
+    for (i=0; i<NSAMPLES; i++) {
+	printf("<%08X>\n", sample_data[i]);
+        // printf("%1.3f\n", val_volts(sample_data[i]));
+    }
 #endif
     terminate(0);
     return(0);
@@ -296,12 +306,12 @@ uint32_t *adc_dma_start(MEM_MAP *mp, int nsamp)
     cbs[3].tfr_len = 4;
     cbs[3].srce_ad = MEM_BUS_ADDR(mp, pindata);
     cbs[3].dest_ad = REG_BUS_ADDR(gpio_regs, GPIO_CLR0);
-    cbs[0].next_cb = 0; // No next CB, this causes the DMA to complete
+    cbs[3].next_cb = 0; // No next CB, this causes the DMA to complete
 #else
     cbs[3].tfr_len = 3 * 4;
     cbs[3].srce_ad = MEM_BUS_ADDR(mp, &modes[3]);
     cbs[3].dest_ad = REG_BUS_ADDR(gpio_regs, GPIO_MODE0);
-    cbs[0].next_cb = 0;
+    cbs[3].next_cb = 0;
 #endif
     start_dma(mp, DMA_CHAN_A, &cbs[0], 0);
     return(rxdata);
@@ -316,7 +326,7 @@ int adc_dma_end(void *buff, uint16_t *data, int nsamp)
     for (i=0; i<nsamp+PRE_SAMP; i++)
     {
         if (i >= PRE_SAMP)
-            *data++ = bp[i] >> 4;
+            *data++ = bp[i] >> (16 - ADC_NPINS);
     }
     return(nsamp);
 }
